@@ -117,6 +117,43 @@
   }
   .chord-formula { color: #555; font-size: clamp(0.75rem, 2.8vw, 0.85rem); margin-top: 8px; }
 
+  /* ── 암기 팁 ── */
+  .tip-box {
+    margin-top: 14px;
+    background: #0f172a;
+    border: 1px solid #6c63ff55;
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: left;
+  }
+  .tip-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 5px;
+  }
+  .tip-text {
+    font-size: clamp(0.8rem, 3vw, 0.9rem);
+    color: #c4b5fd;
+    line-height: 1.6;
+  }
+  .tip-text em {
+    font-style: normal;
+    color: #fff;
+    font-weight: 600;
+  }
+  .tip-text .dim-note {
+    color: #f87171;
+    font-weight: 600;
+  }
+  .tip-text .up-note {
+    color: #34d399;
+    font-weight: 600;
+  }
+
   /* ── 피아노 ── */
   .piano-wrap {
     overflow-x: auto;
@@ -409,6 +446,10 @@
     <div class="chord-type" id="study-chord-type">장조 (Major)</div>
     <div class="chord-notes" id="study-chord-notes"></div>
     <div class="chord-formula" id="study-chord-formula"></div>
+    <div class="tip-box" id="study-tip">
+      <div class="tip-label">💡 암기 팁</div>
+      <div class="tip-text" id="study-tip-text"></div>
+    </div>
   </div>
 
   <div class="legend">
@@ -504,6 +545,65 @@ const CHORD_TYPES = [
 ];
 
 const ROOT_NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+// ═══════════════════════════════════════════════
+//  암기 팁 생성
+// ═══════════════════════════════════════════════
+function getMemoryTip(chord) {
+  const r  = chord.root;          // 예: "C"
+  const rk = NOTE_KR[r];          // 예: "도"
+  const n  = chord.notes;         // 구성음 배열
+
+  // 3음 (index 1), 5음 (index 2), 7음 (index 3)
+  const third = n[1], fifth = n[2], seventh = n[3];
+  const thirdKr = NOTE_KR[third];
+  const fifthKr = fifth ? NOTE_KR[fifth] : '';
+  const sevKr   = seventh ? NOTE_KR[seventh] : '';
+
+  switch (chord.typeId) {
+    case 'maj':
+      return `<em>${r} 장조의 기본형</em>입니다.<br>
+              근음 <em>${rk}(${r})</em>에서 <span class="up-note">장3도(4반음) 위</span> <em>${thirdKr}(${third})</em>,
+              다시 <span class="up-note">단3도(3반음) 위</span> <em>${fifthKr}(${fifth})</em>.`;
+
+    case 'min':
+      return `<em>${r} 장조</em>에서 <span class="dim-note">3음을 반음 하나 내리면</span> 됩니다.<br>
+              <em>${rk}(${r})</em> → <span class="dim-note">${thirdKr}(${third})</span> → <em>${fifthKr}(${fifth})</em><br>
+              장조와 5음은 같고, <span class="dim-note">중간 음(3음)만</span> 반음 낮아집니다.`;
+
+    case 'dim':
+      return `<em>${r}m (단조)</em>에서 <span class="dim-note">5음을 반음 하나 더 내리면</span> 됩니다.<br>
+              <em>${rk}(${r})</em> → <span class="dim-note">${thirdKr}(${third})</span> → <span class="dim-note">${fifthKr}(${fifth})</span><br>
+              단조에서 5음까지 줄여 <span class="dim-note">반음 간격 3+3</span>으로 이루어집니다.`;
+
+    case 'aug':
+      return `<em>${r} 장조</em>에서 <span class="up-note">5음을 반음 하나 올리면</span> 됩니다.<br>
+              <em>${rk}(${r})</em> → <em>${thirdKr}(${third})</em> → <span class="up-note">${fifthKr}(${fifth})</span><br>
+              장조에서 5음만 올려 <span class="up-note">장3도 간격 4+4</span>로 대칭을 이룹니다.`;
+
+    case '7':
+      return `<em>${r} 장조(1·3·5)</em>에 <span class="dim-note">단7도를 추가</span>한 코드입니다.<br>
+              <em>${rk}(${r})</em> · <em>${thirdKr}(${third})</em> · <em>${fifthKr}(${fifth})</em> + <span class="dim-note">${sevKr}(${seventh})</span><br>
+              <em>${r} 장조</em>의 으뜸음에서 <span class="dim-note">10반음 위(단7도)</span>가 추가됩니다.`;
+
+    case 'maj7':
+      return `<em>${r} 장조(1·3·5)</em>에 <span class="up-note">장7도를 추가</span>한 코드입니다.<br>
+              <em>${rk}(${r})</em> · <em>${thirdKr}(${third})</em> · <em>${fifthKr}(${fifth})</em> + <span class="up-note">${sevKr}(${seventh})</span><br>
+              <em>7코드</em>보다 7음이 반음 <span class="up-note">더 높습니다</span> — 한 음 낮은 으뜸음으로 기억하세요.`;
+
+    case 'min7':
+      return `<em>${r}m (단조)</em>에 <span class="dim-note">단7도를 추가</span>한 코드입니다.<br>
+              <em>${rk}(${r})</em> · <span class="dim-note">${thirdKr}(${third})</span> · <em>${fifthKr}(${fifth})</em> + <span class="dim-note">${sevKr}(${seventh})</span><br>
+              <em>${r}7</em>에서 <span class="dim-note">3음을 반음 낮춘 것</span>과 같습니다.`;
+
+    case 'sus4':
+      return `<em>${r} 장조</em>에서 <span class="up-note">3음을 반음 올려 4음으로</span> 바꾼 코드입니다.<br>
+              <em>${rk}(${r})</em> → <span class="up-note">${thirdKr}(${third})</span>(4음) → <em>${fifthKr}(${fifth})</em><br>
+              3음이 없어 장·단조 색깔이 없고 <span class="up-note">긴장감·개방감</span>을 줍니다.`;
+
+    default: return '';
+  }
+}
 
 const ALL_CHORDS = [];
 for (const root of ROOT_NOTES) {
@@ -665,6 +765,8 @@ function renderStudy() {
     pill.textContent = NOTE_KR[n] + ' (' + n + ')';
     notesWrap.appendChild(pill);
   });
+
+  document.getElementById('study-tip-text').innerHTML = getMemoryTip(chord);
 
   buildPiano('study-piano', chord.notes, chord.root);
 }
