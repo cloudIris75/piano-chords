@@ -377,6 +377,13 @@
     .choice-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
   }
 
+  #quiz-area, #quiz-result {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
   @media (max-width: 380px) {
     body { padding: 12px 8px 28px; }
     .chord-card { padding: 14px 12px; }
@@ -518,8 +525,8 @@ const WHITE_KEYS = ['C','D','E','F','G','A','B'];
 const BLACK_MAP  = { C:'C#', D:'D#', F:'F#', G:'G#', A:'A#' };
 
 function calcKeyWidth(wrapId) {
-  const wrap = document.getElementById(wrapId).parentElement; // piano-wrap
-  const available = wrap.clientWidth - 4;
+  const wrap = document.getElementById(wrapId);
+  const available = (wrap ? wrap.clientWidth : window.innerWidth) - 4;
   const totalWhite = WHITE_KEYS.length * 2; // 2 octaves = 14
   const w = Math.max(22, Math.floor(available / totalWhite));
   return w;
