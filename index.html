@@ -154,6 +154,70 @@
     font-weight: 600;
   }
 
+  /* ── 재생 버튼 ── */
+  .sound-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 12px;
+    width: 100%;
+  }
+  .play-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 20px;
+    border-radius: 50px;
+    border: 2px solid #10b98166;
+    background: #10b98114;
+    color: #10b981;
+    cursor: pointer;
+    font-size: clamp(0.85rem, 3.2vw, 0.95rem);
+    font-weight: 700;
+    transition: all .15s;
+    touch-action: manipulation;
+    min-height: 44px;
+  }
+  .play-btn:active, .play-btn.playing {
+    background: #10b98133;
+    border-color: #10b981;
+    transform: scale(0.97);
+  }
+  .play-btn.playing .play-icon { animation: pulse-icon .5s ease infinite alternate; }
+  .play-btn-arp {
+    border-color: #f59e0b66;
+    background: #f59e0b14;
+    color: #f59e0b;
+  }
+  .play-btn-arp:active, .play-btn-arp.playing {
+    background: #f59e0b33;
+    border-color: #f59e0b;
+  }
+  .play-icon { font-size: 1.1rem; line-height: 1; }
+  @keyframes pulse-icon {
+    from { transform: scale(1);    opacity: 1; }
+    to   { transform: scale(1.25); opacity: 0.7; }
+  }
+
+  /* 퀴즈 모드 작은 재생 버튼 */
+  .quiz-play-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 16px;
+    border-radius: 50px;
+    border: 1.5px solid #10b98166;
+    background: #10b98114;
+    color: #10b981;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    touch-action: manipulation;
+    transition: all .15s;
+    margin-bottom: 10px;
+  }
+  .quiz-play-btn:active { background: #10b98133; }
+
   /* ── 피아노 ── */
   .piano-wrap {
     overflow-x: auto;
@@ -463,6 +527,15 @@
   </div>
   <p class="swipe-hint" id="study-swipe-hint"></p>
 
+  <div class="sound-row">
+    <button class="play-btn" id="study-play-btn" onclick="playStudyChord(false)">
+      <span class="play-icon">🔊</span> 코드 듣기
+    </button>
+    <button class="play-btn play-btn-arp" id="study-arp-btn" onclick="playStudyChord(true)">
+      <span class="play-icon">🎵</span> 아르페지오
+    </button>
+  </div>
+
   <div class="nav-row">
     <button class="btn btn-secondary btn-wide" onclick="studyPrev()">◀ 이전</button>
     <span class="chord-counter" id="study-counter">1 / 96</span>
@@ -499,6 +572,10 @@
     <div class="piano-wrap" id="quiz-piano-wrap">
       <div class="piano" id="quiz-piano"></div>
     </div>
+
+    <button class="quiz-play-btn" id="q-play-btn" onclick="playQuizChord()">
+      <span>🔊</span> 소리 듣기
+    </button>
 
     <div class="quiz-feedback" id="q-feedback"></div>
 
@@ -545,6 +622,120 @@ const CHORD_TYPES = [
 ];
 
 const ROOT_NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+// ═══════════════════════════════════════════════
+//  🔊 Web Audio 피아노 합성
+// ═══════════════════════════════════════════════
+// 각 음의 주파수 (4옥타브 기준)
+const NOTE_FREQ = {
+  'C':261.63,'C#':277.18,'D':293.66,'D#':311.13,'E':329.63,
+  'F':349.23,'F#':369.99,'G':392.00,'G#':415.30,'A':440.00,
+  'A#':466.16,'B':493.88
+};
+
+let audioCtx = null;
+let playStopFns = []; // 현재 재생 중인 음 종료 함수들
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// 하나의 음을 피아노처럼 합성 (배음 구조 + ADSR)
+function synthNote(ctx, freq, startTime, duration) {
+  const masterGain = ctx.createGain();
+  masterGain.connect(ctx.destination);
+
+  // 배음 목록: [배수, 상대 볼륨]
+  const partials = [[1,1.0],[2,0.5],[3,0.25],[4,0.12],[5,0.06],[6,0.03]];
+
+  partials.forEach(([mult, rel]) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq * mult;
+
+    // 배음이 높을수록 빠르게 감쇠
+    const atk     = 0.006;
+    const decay   = 0.25 / mult;
+    const sustain = Math.max(0.0001, rel * 0.08 / mult);
+    const total   = duration;
+
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(rel * 0.45, startTime + atk);
+    gain.gain.exponentialRampToValueAtTime(sustain, startTime + atk + decay);
+    gain.gain.setValueAtTime(sustain, startTime + total - 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + total);
+
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start(startTime);
+    osc.stop(startTime + total + 0.05);
+  });
+
+  // 조기 종료 가능하도록 gain 반환
+  return masterGain;
+}
+
+// 코드 또는 아르페지오 재생
+function playChordNotes(notes, arpeggiate) {
+  // 이전 재생 중단
+  stopAllNotes();
+
+  const ctx  = getAudioCtx();
+  const now  = ctx.currentTime + 0.05;
+  const dur  = arpeggiate ? 2.2 : 2.0;
+  const step = arpeggiate ? 0.13 : 0;
+
+  const gains = notes.map((note, i) => {
+    const freq = NOTE_FREQ[note];
+    if (!freq) return null;
+    return synthNote(ctx, freq, now + i * step, dur + i * step * 0.5);
+  });
+
+  playStopFns = gains.filter(Boolean).map(g => () => {
+    try {
+      g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
+    } catch(e) {}
+  });
+
+  // 재생 완료 후 버튼 상태 초기화
+  const totalDur = (dur + (notes.length - 1) * step) * 1000 + 200;
+  return totalDur;
+}
+
+function stopAllNotes() {
+  playStopFns.forEach(fn => fn());
+  playStopFns = [];
+}
+
+// 버튼 애니메이션 헬퍼
+function animatePlayBtn(btn, durationMs) {
+  btn.classList.add('playing');
+  clearTimeout(btn._playTimer);
+  btn._playTimer = setTimeout(() => btn.classList.remove('playing'), durationMs);
+}
+
+// ── 학습 모드 재생
+function playStudyChord(arpeggiate) {
+  const chord = studyList[studyIdx];
+  const btn   = document.getElementById(arpeggiate ? 'study-arp-btn' : 'study-play-btn');
+  const dur   = playChordNotes(chord.notes, arpeggiate);
+  animatePlayBtn(btn, dur);
+}
+
+// ── 퀴즈 모드 재생
+function playQuizChord() {
+  if (quizIdx >= quizPool.length) return;
+  const chord = quizPool[quizIdx];
+  const btn   = document.getElementById('q-play-btn');
+  const dur   = playChordNotes(chord.notes, false);
+  animatePlayBtn(btn, dur);
+}
 
 // ═══════════════════════════════════════════════
 //  암기 팁 생성
@@ -771,9 +962,9 @@ function renderStudy() {
   buildPiano('study-piano', chord.notes, chord.root);
 }
 
-function studyNext()    { studyIdx = (studyIdx+1) % studyList.length; renderStudy(); }
-function studyPrev()    { studyIdx = (studyIdx-1+studyList.length) % studyList.length; renderStudy(); }
-function studyShuffle() { studyIdx = Math.floor(Math.random() * studyList.length); renderStudy(); }
+function studyNext()    { stopAllNotes(); studyIdx = (studyIdx+1) % studyList.length; renderStudy(); }
+function studyPrev()    { stopAllNotes(); studyIdx = (studyIdx-1+studyList.length) % studyList.length; renderStudy(); }
+function studyShuffle() { stopAllNotes(); studyIdx = Math.floor(Math.random() * studyList.length); renderStudy(); }
 
 // ═══════════════════════════════════════════════
 //  퀴즈 모드
@@ -865,6 +1056,11 @@ function checkAnswer(correct, chord, clickedBtn, grid) {
     fb.textContent = '❌ 오답! 정답: ' + chord.name;
     fb.className   = 'quiz-feedback feedback-wrong';
   }
+
+  // 정답 확인 후 자동으로 코드 소리 재생
+  const qBtn = document.getElementById('q-play-btn');
+  const dur  = playChordNotes(chord.notes, false);
+  animatePlayBtn(qBtn, dur);
 
   document.getElementById('q-correct').textContent = quizCorrect;
   document.getElementById('q-wrong').textContent   = quizWrong;
