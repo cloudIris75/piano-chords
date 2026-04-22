@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎹 피아노 코드 암기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    margin-bottom: 6px;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+
+  .subtitle { color: #aaa; font-size: 0.9rem; margin-bottom: 20px; }
+
+  /* ── 탭 ── */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .tab {
+    padding: 8px 24px;
+    border-radius: 20px;
+    border: 2px solid #444;
+    background: transparent;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all .2s;
+  }
+  .tab.active, .tab:hover {
+    background: #6c63ff;
+    border-color: #6c63ff;
+    color: #fff;
+  }
+
+  /* ── 패널 ── */
+  .panel { display: none; width: 100%; max-width: 860px; }
+  .panel.active { display: flex; flex-direction: column; align-items: center; }
+
+  /* ── 코드 카드 ── */
+  .chord-card {
+    background: #16213e;
+    border: 2px solid #6c63ff44;
+    border-radius: 16px;
+    padding: 24px 32px;
+    text-align: center;
+    margin-bottom: 20px;
+    width: 100%;
+  }
+  .chord-name { font-size: 2.4rem; font-weight: 700; color: #a78bfa; }
+  .chord-type { font-size: 1rem; color: #888; margin-top: 4px; }
+  .chord-notes {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .note-pill {
+    background: #6c63ff33;
+    border: 1px solid #6c63ff88;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 1rem;
+    color: #c4b5fd;
+  }
+  .chord-formula { color: #666; font-size: 0.85rem; margin-top: 10px; }
+
+  /* ── 피아노 ── */
+  .piano-wrap {
+    overflow-x: auto;
+    width: 100%;
+    padding: 10px 0 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .piano {
+    position: relative;
+    display: flex;
+    user-select: none;
+  }
+  .white-key {
+    width: 44px;
+    height: 160px;
+    background: #f5f5f0;
+    border: 1px solid #bbb;
+    border-radius: 0 0 8px 8px;
+    position: relative;
+    cursor: pointer;
+    transition: background .1s;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+    font-size: 0.7rem;
+    color: #999;
+    font-weight: 600;
+  }
+  .white-key:hover { background: #e8e4ff; }
+  .white-key.highlight {
+    background: #7c3aed !important;
+    color: #fff;
+    border-color: #5b21b6;
+  }
+  .white-key.root {
+    background: #4f46e5 !important;
+    color: #fff;
+    border-color: #3730a3;
+  }
+  .black-key {
+    width: 28px;
+    height: 100px;
+    background: #1a1a1a;
+    border: 1px solid #000;
+    border-radius: 0 0 5px 5px;
+    position: absolute;
+    top: 0;
+    z-index: 2;
+    cursor: pointer;
+    transition: background .1s;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 6px;
+    font-size: 0.6rem;
+    color: #666;
+    font-weight: 600;
+  }
+  .black-key:hover { background: #2d2d6e; }
+  .black-key.highlight {
+    background: #7c3aed !important;
+    color: #fff;
+  }
+  .black-key.root {
+    background: #4f46e5 !important;
+    color: #fff;
+  }
+
+  /* ── 탐색 버튼 ── */
+  .nav-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .btn {
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all .2s;
+  }
+  .btn-primary { background: #6c63ff; color: #fff; }
+  .btn-primary:hover { background: #5a52e0; }
+  .btn-secondary { background: #2d2d4e; color: #ccc; }
+  .btn-secondary:hover { background: #3d3d6e; }
+  .btn-success { background: #10b981; color: #fff; }
+  .btn-success:hover { background: #059669; }
+  .btn-danger { background: #ef4444; color: #fff; }
+  .btn-danger:hover { background: #dc2626; }
+
+  .chord-counter { color: #888; font-size: 0.9rem; }
+
+  /* ── 필터 ── */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .filter-btn {
+    padding: 5px 14px;
+    border-radius: 14px;
+    border: 1px solid #444;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all .15s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    background: #6c63ff33;
+    border-color: #6c63ff88;
+    color: #c4b5fd;
+  }
+
+  /* ── 퀴즈 ── */
+  .quiz-prompt {
+    font-size: 1.1rem;
+    color: #aaa;
+    margin-bottom: 8px;
+  }
+  .quiz-chord-name {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #a78bfa;
+    margin-bottom: 6px;
+  }
+  .quiz-type {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 20px;
+  }
+  .quiz-hint {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 16px;
+  }
+  .quiz-feedback {
+    font-size: 1.1rem;
+    font-weight: 700;
+    min-height: 28px;
+    margin-bottom: 12px;
+  }
+  .feedback-correct { color: #10b981; }
+  .feedback-wrong { color: #ef4444; }
+
+  /* 퀴즈 선택지 버튼 */
+  .choices-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 16px;
+  }
+  .choice-btn {
+    padding: 14px;
+    border-radius: 12px;
+    border: 2px solid #444;
+    background: #16213e;
+    color: #ddd;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all .2s;
+    text-align: center;
+  }
+  .choice-btn:hover:not(:disabled) { border-color: #6c63ff; color: #a78bfa; }
+  .choice-btn.correct { border-color: #10b981; background: #10b98122; color: #10b981; }
+  .choice-btn.wrong   { border-color: #ef4444; background: #ef444422; color: #ef4444; }
+  .choice-btn:disabled { opacity: 0.7; cursor: default; }
+
+  /* ── 진행 바 ── */
+  .progress-bar-wrap {
+    width: 100%;
+    max-width: 500px;
+    height: 8px;
+    background: #2d2d4e;
+    border-radius: 4px;
+    margin-bottom: 18px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: #6c63ff;
+    border-radius: 4px;
+    transition: width .4s;
+  }
+
+  /* ── 스코어 ── */
+  .score-display {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+  }
+  .score-item { text-align: center; }
+  .score-num { font-size: 1.8rem; font-weight: 700; }
+  .score-label { font-size: 0.75rem; color: #888; }
+  .score-correct { color: #10b981; }
+  .score-wrong   { color: #ef4444; }
+  .score-total   { color: #a78bfa; }
+
+  /* ── 결과 화면 ── */
+  .result-card {
+    background: #16213e;
+    border: 2px solid #6c63ff44;
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+    width: 100%;
+    max-width: 500px;
+  }
+  .result-emoji { font-size: 3rem; margin-bottom: 12px; }
+  .result-title { font-size: 1.6rem; font-weight: 700; color: #a78bfa; margin-bottom: 8px; }
+  .result-desc  { color: #888; margin-bottom: 20px; }
+  .result-stats { display: flex; justify-content: center; gap: 30px; margin-bottom: 24px; }
+
+  /* ── 범례 ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
+    margin-bottom: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+  }
+  .legend-root  { background: #4f46e5; }
+  .legend-chord { background: #7c3aed; }
+  .legend-white { background: #f5f5f0; border: 1px solid #bbb; }
+</style>
+</head>
+<body>
+
+<h1>🎹 피아노 코드 암기</h1>
+<p class="subtitle">피아노 코드를 보고 외우고 퀴즈로 확인하세요</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('study')">📖 학습 모드</button>
+  <button class="tab" onclick="switchTab('quiz')">🎯 퀴즈 모드</button>
+</div>
+
+<!-- ══════════════ 학습 모드 ══════════════ -->
+<div id="panel-study" class="panel active">
+  <div class="filter-row" id="study-filters"></div>
+
+  <div class="chord-card">
+    <div class="chord-name" id="study-chord-name">C</div>
+    <div class="chord-type" id="study-chord-type">장조 (Major)</div>
+    <div class="chord-notes" id="study-chord-notes"></div>
+    <div class="chord-formula" id="study-chord-formula"></div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot legend-root"></div> 근음 (Root)</div>
+    <div class="legend-item"><div class="legend-dot legend-chord"></div> 구성음</div>
+    <div class="legend-item"><div class="legend-dot legend-white"></div> 일반</div>
+  </div>
+
+  <div class="piano-wrap">
+    <div class="piano" id="study-piano"></div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-secondary" onclick="studyPrev()">◀ 이전</button>
+    <span class="chord-counter" id="study-counter">1 / 48</span>
+    <button class="btn btn-primary" onclick="studyNext()">다음 ▶</button>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-secondary" onclick="studyShuffle()">🔀 랜덤</button>
+  </div>
+</div>
+
+<!-- ══════════════ 퀴즈 모드 ══════════════ -->
+<div id="panel-quiz" class="panel">
+  <div id="quiz-area">
+    <div class="score-display">
+      <div class="score-item"><div class="score-num score-correct" id="q-correct">0</div><div class="score-label">정답</div></div>
+      <div class="score-item"><div class="score-num score-wrong"   id="q-wrong">0</div><div class="score-label">오답</div></div>
+      <div class="score-item"><div class="score-num score-total"   id="q-total">0</div><div class="score-label">남은 문제</div></div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="q-progress" style="width:0%"></div>
+    </div>
+
+    <div class="filter-row" id="quiz-filters"></div>
+
+    <p class="quiz-prompt">이 코드의 이름은?</p>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot legend-root"></div> 근음 (Root)</div>
+      <div class="legend-item"><div class="legend-dot legend-chord"></div> 구성음</div>
+    </div>
+
+    <div class="piano-wrap">
+      <div class="piano" id="quiz-piano"></div>
+    </div>
+
+    <div class="quiz-feedback" id="q-feedback"></div>
+
+    <div class="choices-grid" id="q-choices"></div>
+
+    <div class="nav-row">
+      <button class="btn btn-primary" id="q-next-btn" onclick="quizNext()" style="display:none">다음 문제 ▶</button>
+    </div>
+  </div>
+
+  <div id="quiz-result" style="display:none">
+    <div class="result-card">
+      <div class="result-emoji" id="res-emoji">🎉</div>
+      <div class="result-title" id="res-title">완료!</div>
+      <div class="result-desc"  id="res-desc"></div>
+      <div class="result-stats">
+        <div class="score-item"><div class="score-num score-correct" id="res-correct">0</div><div class="score-label">정답</div></div>
+        <div class="score-item"><div class="score-num score-wrong"   id="res-wrong">0</div><div class="score-label">오답</div></div>
+      </div>
+      <button class="btn btn-primary" onclick="quizRestart()">다시 하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  코드 데이터
+// ═══════════════════════════════════════════════
+const NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const NOTE_KR = {
+  'C':'도', 'C#':'도#', 'D':'레', 'D#':'레#', 'E':'미',
+  'F':'파', 'F#':'파#', 'G':'솔', 'G#':'솔#', 'A':'라', 'A#':'라#', 'B':'시'
+};
+
+// 코드 타입 정의 (반음 간격)
+const CHORD_TYPES = [
+  { id:'maj',  label:'장조 (Major)',           formula:'1 - 3 - 5',         intervals:[0,4,7] },
+  { id:'min',  label:'단조 (Minor)',           formula:'1 - ♭3 - 5',        intervals:[0,3,7] },
+  { id:'dim',  label:'감화음 (Diminished)',    formula:'1 - ♭3 - ♭5',       intervals:[0,3,6] },
+  { id:'aug',  label:'증화음 (Augmented)',     formula:'1 - 3 - #5',        intervals:[0,4,8] },
+  { id:'7',    label:'도미넌트 세븐 (Dom 7)',  formula:'1 - 3 - 5 - ♭7',    intervals:[0,4,7,10] },
+  { id:'maj7', label:'메이저 세븐 (Maj7)',     formula:'1 - 3 - 5 - 7',     intervals:[0,4,7,11] },
+  { id:'min7', label:'마이너 세븐 (Min7)',     formula:'1 - ♭3 - 5 - ♭7',   intervals:[0,3,7,10] },
+  { id:'sus4', label:'서스4 (Sus4)',           formula:'1 - 4 - 5',         intervals:[0,5,7] },
+];
+
+const ROOT_NOTES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+// 전체 코드 생성
+const ALL_CHORDS = [];
+for (const root of ROOT_NOTES) {
+  for (const ct of CHORD_TYPES) {
+    const rootIdx = NOTES.indexOf(root);
+    const noteNames = ct.intervals.map(i => NOTES[(rootIdx + i) % 12]);
+    const displayName = root + (ct.id === 'maj' ? '' :
+      ct.id === 'min' ? 'm' :
+      ct.id === 'dim' ? 'dim' :
+      ct.id === 'aug' ? 'aug' :
+      ct.id === '7'   ? '7' :
+      ct.id === 'maj7'? 'maj7' :
+      ct.id === 'min7'? 'm7' :
+      ct.id === 'sus4'? 'sus4' : '');
+    ALL_CHORDS.push({
+      name: displayName,
+      root,
+      typeId: ct.id,
+      typeLabel: ct.label,
+      formula: ct.formula,
+      notes: noteNames,
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  피아노 키 레이아웃 (C~B 2 옥타브)
+// ═══════════════════════════════════════════════
+// 흰 건반: C D E F G A B (7개) × 2옥타브 = 14개
+// 검은 건반: C# D# F# G# A# × 2 = 10개
+const WHITE_KEYS = ['C','D','E','F','G','A','B'];
+const BLACK_MAP  = { 'C':'C#', 'D':'D#', 'F':'F#', 'G':'G#', 'A':'A#' }; // 흰 건반 오른쪽에 있는 검은 건반
+
+function buildPiano(containerId, highlightNotes, rootNote) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = '';
+
+  const W = 44; // 흰 건반 너비
+
+  let whiteIndex = 0;
+  // 2 옥타브
+  for (let oct = 0; oct < 2; oct++) {
+    for (const wn of WHITE_KEYS) {
+      const note = wn;
+      const isHighlight = highlightNotes.includes(note);
+      const isRoot = note === rootNote;
+
+      const wKey = document.createElement('div');
+      wKey.className = 'white-key' + (isRoot ? ' root' : isHighlight ? ' highlight' : '');
+      wKey.title = NOTE_KR[note] + ' (' + note + ')';
+      wKey.textContent = note;
+      wrap.appendChild(wKey);
+
+      // 검은 건반
+      if (BLACK_MAP[wn]) {
+        const bn = BLACK_MAP[wn];
+        const isBH = highlightNotes.includes(bn);
+        const isBR = bn === rootNote;
+
+        const bKey = document.createElement('div');
+        bKey.className = 'black-key' + (isBR ? ' root' : isBH ? ' highlight' : '');
+        bKey.title = NOTE_KR[bn] + ' (' + bn + ')';
+        bKey.textContent = bn;
+        // 위치: 현재 흰 건반 오른쪽 끝 - 흰 건반 너비/2 - 검은건반너비/2
+        bKey.style.left = ((whiteIndex + 1) * W - 14) + 'px';
+        wrap.appendChild(bKey);
+      }
+      whiteIndex++;
+    }
+  }
+
+  // 피아노 전체 너비 맞추기
+  wrap.style.width = (whiteIndex * W) + 'px';
+}
+
+// ═══════════════════════════════════════════════
+//  탭 전환
+// ═══════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['study','quiz'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'quiz') initQuiz();
+}
+
+// ═══════════════════════════════════════════════
+//  학습 모드
+// ═══════════════════════════════════════════════
+let studyFilter = 'all';
+let studyList   = [...ALL_CHORDS];
+let studyIdx    = 0;
+
+function buildStudyFilters() {
+  const row = document.getElementById('study-filters');
+  row.innerHTML = '';
+  const filters = [['all','전체'], ...CHORD_TYPES.map(ct => [ct.id, ct.id.toUpperCase()])];
+  for (const [id, label] of filters) {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (id === studyFilter ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => {
+      studyFilter = id;
+      studyList = id === 'all' ? [...ALL_CHORDS] : ALL_CHORDS.filter(c => c.typeId === id);
+      studyIdx = 0;
+      buildStudyFilters();
+      renderStudy();
+    };
+    row.appendChild(btn);
+  }
+}
+
+function renderStudy() {
+  const chord = studyList[studyIdx];
+  document.getElementById('study-chord-name').textContent   = chord.name;
+  document.getElementById('study-chord-type').textContent   = chord.typeLabel;
+  document.getElementById('study-chord-formula').textContent = '구성 음정: ' + chord.formula;
+  document.getElementById('study-counter').textContent = (studyIdx+1) + ' / ' + studyList.length;
+
+  const notesWrap = document.getElementById('study-chord-notes');
+  notesWrap.innerHTML = '';
+  chord.notes.forEach(n => {
+    const pill = document.createElement('span');
+    pill.className = 'note-pill';
+    pill.textContent = NOTE_KR[n] + ' (' + n + ')';
+    notesWrap.appendChild(pill);
+  });
+
+  buildPiano('study-piano', chord.notes, chord.root);
+}
+
+function studyNext()    { studyIdx = (studyIdx+1) % studyList.length; renderStudy(); }
+function studyPrev()    { studyIdx = (studyIdx-1+studyList.length) % studyList.length; renderStudy(); }
+function studyShuffle() { studyIdx = Math.floor(Math.random() * studyList.length); renderStudy(); }
+
+// ═══════════════════════════════════════════════
+//  퀴즈 모드
+// ═══════════════════════════════════════════════
+let quizFilter  = 'all';
+let quizPool    = [];
+let quizIdx     = 0;
+let quizCorrect = 0;
+let quizWrong   = 0;
+let quizAnswered = false;
+
+function buildQuizFilters() {
+  const row = document.getElementById('quiz-filters');
+  row.innerHTML = '';
+  const filters = [['all','전체'], ...CHORD_TYPES.map(ct => [ct.id, ct.id.toUpperCase()])];
+  for (const [id, label] of filters) {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (id === quizFilter ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => {
+      quizFilter = id;
+      buildQuizFilters();
+      quizRestart();
+    };
+    row.appendChild(btn);
+  }
+}
+
+function buildQuizPool() {
+  const base = quizFilter === 'all' ? ALL_CHORDS : ALL_CHORDS.filter(c => c.typeId === quizFilter);
+  // 셔플
+  quizPool = [...base].sort(() => Math.random() - 0.5);
+}
+
+function initQuiz() {
+  buildQuizFilters();
+  buildQuizPool();
+  quizIdx     = 0;
+  quizCorrect = 0;
+  quizWrong   = 0;
+  document.getElementById('quiz-area').style.display   = '';
+  document.getElementById('quiz-result').style.display = 'none';
+  renderQuiz();
+}
+
+function renderQuiz() {
+  if (quizIdx >= quizPool.length) { showResult(); return; }
+
+  quizAnswered = false;
+  const chord = quizPool[quizIdx];
+
+  // 스코어
+  document.getElementById('q-correct').textContent = quizCorrect;
+  document.getElementById('q-wrong').textContent   = quizWrong;
+  document.getElementById('q-total').textContent   = quizPool.length - quizIdx;
+
+  // 진행 바
+  const pct = (quizIdx / quizPool.length * 100).toFixed(1);
+  document.getElementById('q-progress').style.width = pct + '%';
+
+  // 피아노
+  buildPiano('quiz-piano', chord.notes, chord.root);
+
+  // 피드백 초기화
+  document.getElementById('q-feedback').textContent = '';
+  document.getElementById('q-feedback').className   = 'quiz-feedback';
+  document.getElementById('q-next-btn').style.display = 'none';
+
+  // 보기 4개 생성 (정답 포함)
+  const pool = quizFilter === 'all' ? ALL_CHORDS : ALL_CHORDS.filter(c => c.typeId === quizFilter);
+  const wrongs = pool.filter(c => c.name !== chord.name).sort(() => Math.random() - 0.5).slice(0, 3);
+  const choices = [...wrongs, chord].sort(() => Math.random() - 0.5);
+
+  const grid = document.getElementById('q-choices');
+  grid.innerHTML = '';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = `<span style="font-size:1.2rem">${c.name}</span><br><span style="font-size:0.75rem;color:#888">${c.typeLabel}</span>`;
+    btn.onclick = () => checkAnswer(c.name === chord.name, chord, btn, grid);
+    grid.appendChild(btn);
+  });
+}
+
+function checkAnswer(correct, chord, clickedBtn, grid) {
+  if (quizAnswered) return;
+  quizAnswered = true;
+
+  // 모든 버튼 비활성화
+  grid.querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+    const name = b.querySelector('span').textContent;
+    if (name === chord.name) b.classList.add('correct');
+  });
+
+  if (correct) {
+    quizCorrect++;
+    const fb = document.getElementById('q-feedback');
+    fb.textContent = '✅ 정답!';
+    fb.className   = 'quiz-feedback feedback-correct';
+  } else {
+    quizWrong++;
+    clickedBtn.classList.add('wrong');
+    const fb = document.getElementById('q-feedback');
+    fb.textContent = '❌ 오답! 정답: ' + chord.name;
+    fb.className   = 'quiz-feedback feedback-wrong';
+  }
+
+  document.getElementById('q-correct').textContent = quizCorrect;
+  document.getElementById('q-wrong').textContent   = quizWrong;
+  document.getElementById('q-next-btn').style.display = '';
+}
+
+function quizNext() {
+  quizIdx++;
+  renderQuiz();
+}
+
+function quizRestart() {
+  buildQuizPool();
+  quizIdx     = 0;
+  quizCorrect = 0;
+  quizWrong   = 0;
+  document.getElementById('quiz-area').style.display   = '';
+  document.getElementById('quiz-result').style.display = 'none';
+  renderQuiz();
+}
+
+function showResult() {
+  document.getElementById('quiz-area').style.display   = 'none';
+  document.getElementById('quiz-result').style.display = '';
+
+  const total = quizCorrect + quizWrong;
+  const pct   = total ? Math.round(quizCorrect / total * 100) : 0;
+
+  document.getElementById('res-correct').textContent = quizCorrect;
+  document.getElementById('res-wrong').textContent   = quizWrong;
+
+  let emoji, title, desc;
+  if (pct === 100) { emoji='🏆'; title='완벽해요!'; desc='모든 코드를 맞혔어요! 대단합니다!'; }
+  else if (pct >= 80) { emoji='🎉'; title='훌륭해요!'; desc=`정답률 ${pct}% — 조금만 더 연습하면 완벽해질 거예요!`; }
+  else if (pct >= 60) { emoji='👍'; title='잘 했어요!'; desc=`정답률 ${pct}% — 학습 모드로 돌아가서 틀린 코드를 복습해 보세요.`; }
+  else { emoji='💪'; title='계속 연습해요!'; desc=`정답률 ${pct}% — 학습 모드로 돌아가서 코드를 다시 공부해 보세요.`; }
+
+  document.getElementById('res-emoji').textContent = emoji;
+  document.getElementById('res-title').textContent = title;
+  document.getElementById('res-desc').textContent  = desc;
+}
+
+// ═══════════════════════════════════════════════
+//  초기화
+// ═══════════════════════════════════════════════
+buildStudyFilters();
+renderStudy();
+</script>
+</body>
+</html>
